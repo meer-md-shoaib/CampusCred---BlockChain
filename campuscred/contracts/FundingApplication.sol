@@ -184,7 +184,6 @@ contract FundingApplication {
         Application storage application = applications[_applicationId];
 
         require(application.exists, "Application not found");
-        require(application.student != msg.sender, "Cannot approve own application");
 
         require(
             application.status == Status.Submitted ||
@@ -203,7 +202,6 @@ contract FundingApplication {
         Application storage application = applications[_applicationId];
 
         require(application.exists, "Application not found");
-        require(application.student != msg.sender, "Cannot approve own application");
         require(application.status == Status.Approved, "Not approved");
 
         application.status = Status.Disbursed;
@@ -228,7 +226,6 @@ contract FundingApplication {
         Application storage application = applications[_applicationId];
 
         require(application.exists, "Application not found");
-        require(application.student != msg.sender, "Cannot approve own application");
         require(
             application.status == Status.Disbursed,
             "Not disbursed"
@@ -267,7 +264,6 @@ contract FundingApplication {
         Application memory application = applications[_applicationId];
 
         require(application.exists, "Application not found");
-        require(application.student != msg.sender, "Cannot approve own application");
 
         return (
             application.id,
@@ -279,5 +275,14 @@ contract FundingApplication {
             uint8(application.status),
             application.approvalCount
         );
+    }
+
+    function getAllApplications() external view returns (Application[] memory) {
+        uint256 total = nextApplicationId > 1 ? nextApplicationId - 1 : 0;
+        Application[] memory items = new Application[](total);
+        for (uint256 i = 1; i < nextApplicationId; i++) {
+            items[i - 1] = applications[i];
+        }
+        return items;
     }
 }
