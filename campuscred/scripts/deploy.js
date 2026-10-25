@@ -40,6 +40,10 @@ async function main() {
 
   await fundTx.wait();
 
+  console.log("Setting up Reviewer 2 authorization...");
+  const addRevTx = await funding.addReviewer(reviewer2.address);
+  await addRevTx.wait();
+
   console.log("\nContracts deployed and treasury funded successfully!");
   console.log("CampusToken:", await token.getAddress());
   console.log("StudentRegistry:", await registry.getAddress());
