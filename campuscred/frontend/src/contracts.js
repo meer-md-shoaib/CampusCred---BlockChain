@@ -6,10 +6,15 @@ export const CONTRACT_ADDRESSES = {
   fundingApplication: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
 };
 
+export const STATUS_NAMES = ["Submitted", "Under Review", "Approved", "Rejected", "Disbursed", "Completed"];
+
 export const studentRegistryAbi = [
   "function registerStudent(string studentId, string name, string department)",
   "function students(address) view returns (string studentId, string name, string department, bool isRegistered, bool isVerified)",
   "function isStudentRegistered(address student) view returns (bool)",
+  "function isStudentVerified(address student) view returns (bool)",
+  "function getAllStudents() view returns (address[])",
+  "function owner() view returns (address)",
 ];
 
 export const fundingApplicationAbi = [
@@ -18,7 +23,10 @@ export const fundingApplicationAbi = [
   "function approveApplication(uint256 applicationId)",
   "function rejectApplication(uint256 applicationId)",
   "function disburseFunds(uint256 applicationId)",
+  "function completeApplication(uint256 applicationId)",
   "function getApplicationDetails(uint256 applicationId) view returns (uint256 id, address student, string title, string reason, string documentCid, uint256 amount, uint8 status, uint256 approvalCount)",
+  "function getAllApplications() view returns (tuple(uint256 id, address student, string title, string reason, string documentCid, uint256 amount, uint8 status, uint256 approvalCount, bool exists)[])",
+  "function hasApproved(uint256 applicationId, address reviewer) view returns (bool)",
 ];
 
 export const campusTokenAbi = [
