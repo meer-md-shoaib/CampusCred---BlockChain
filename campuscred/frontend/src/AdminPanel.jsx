@@ -252,6 +252,31 @@ export default function AdminPanel({ signer, provider, address, onAdminAction })
         </div>
       </div>
 
-          </div>
+      {/* Authorize Reviewer Section */}
+      <div className="admin-section" style={{ marginTop: "32px" }}>
+        <h3>Authorize New Reviewer</h3>
+        <p className="section-desc">
+          Grant faculty evaluation and approval voting rights to an academic wallet address.
+        </p>
+
+        <div className="form-row-btn">
+          <input
+            className="cyber-input mono-font"
+            type="text"
+            placeholder="0x... Reviewer wallet address"
+            value={reviewerAddress}
+            onChange={(e) => setReviewerAddress(e.target.value)}
+            disabled={actionLoading !== null || !isAdmin}
+          />
+          <button
+            className="primary-button"
+            onClick={addReviewer}
+            disabled={actionLoading !== null || !isAdmin}
+          >
+            {actionLoading === "addReviewer" ? "Authorizing..." : "+ Authorize Reviewer"}
+          </button>
+        </div>
+      </div>
+    </div>
   );
 }
