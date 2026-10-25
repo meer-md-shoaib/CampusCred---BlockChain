@@ -75,4 +75,11 @@ contract StudentRegistry {
         return students[_student].isRegistered;
     }
 
+    function isStudentVerified(address _student) external view returns (bool) {
+        return students[_student].isVerified;
+    }
+
+    function getAllStudents() external view returns (address[] memory) {
+        return studentAddresses;
+    }
 }
