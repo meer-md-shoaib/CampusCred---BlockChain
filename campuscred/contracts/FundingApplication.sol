@@ -95,6 +95,12 @@ contract FundingApplication {
         emit ReviewerAdded(_reviewer);
     }
 
+    function removeReviewer(address _reviewer) external onlyAdmin {
+        require(isReviewer[_reviewer], "Not a reviewer");
+        require(_reviewer != admin, "Cannot remove admin");
+        isReviewer[_reviewer] = false;
+    }
+
     function submitApplication(
         string memory _title,
         string memory _reason,
