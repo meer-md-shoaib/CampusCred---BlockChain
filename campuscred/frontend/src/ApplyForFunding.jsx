@@ -1,105 +1,197 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { BrowserProvider, Contract, parseUnits } from "ethers";
 import {
   CONTRACT_ADDRESSES,
   fundingApplicationAbi,
+  studentRegistryAbi,
 } from "./contracts";
 
-export default function ApplyForFunding() {
+export default function ApplyForFunding({ signer, provider, address, onApplicationSubmitted }) {
   const [title, setTitle] = useState("");
   const [reason, setReason] = useState("");
-  const [documentCid, setDocumentCid] = useState("");
-  const [amount, setAmount] = useState("");
+  const [documentCid, setDocumentCid] = useState("QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco");
+  const [amount, setAmount] = useState("300");
+  const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
+  const [messageType, setMessageType] = useState("info");
+  const [isRegistered, setIsRegistered] = useState(false);
+
+  useEffect(() => {
+    if (address && provider) {
+      checkRegistration();
+    }
+  }, [address, provider]);
+
+  async function checkRegistration() {
+    try {
+      const activeProvider = provider || new BrowserProvider(window.ethereum);
+      const registry = new Contract(
+        CONTRACT_ADDRESSES.studentRegistry,
+        studentRegistryAbi,
+        activeProvider
+      );
+      const reg = await registry.isStudentRegistered(address);
+      setIsRegistered(reg);
+    } catch (err) {
+      console.error(err);
+    }
+  }
 
   async function submitApplication() {
-    try {
-      if (!title || !reason || !documentCid || !amount) {
-        setMessage("Please fill in every field.");
-        return;
-      }
+    if (!title.trim() || !reason.trim() || !documentCid.trim() || !amount) {
+      setMessage("Please fill in every required field.");
+      setMessageType("error");
+      return;
+    }
 
-      const provider = new BrowserProvider(window.ethereum);
-      const signer = await provider.getSigner();
+    if (Number(amount) <= 0) {
+      setMessage("Amount must be greater than 0 CRED.");
+      setMessageType("error");
+      return;
+    }
+
+    try {
+      setLoading(true);
+      setMessage("Preparing transaction with 18 decimal CRED token precision...");
+      setMessageType("info");
+
+      let activeSigner = signer;
+      if (!activeSigner && window.ethereum) {
+        const prov = new BrowserProvider(window.ethereum);
+        activeSigner = await prov.getSigner();
+      }
 
       const fundingContract = new Contract(
         CONTRACT_ADDRESSES.fundingApplication,
         fundingApplicationAbi,
-        signer
+        activeSigner
       );
 
-      setMessage("Confirm the application transaction in MetaMask...");
-
+      // Fix decimals: Convert CRED amount to 18 decimal wei
       const parsedAmount = parseUnits(amount.toString(), 18);
+
       const tx = await fundingContract.submitApplication(
-        title,
-        reason,
-        documentCid,
+        title.trim(),
+        reason.trim(),
+        documentCid.trim(),
         parsedAmount
       );
 
+      setMessage("Transaction sent! Awaiting blockchain confirmation...");
       await tx.wait();
 
-      setMessage("Funding application submitted successfully.");
+      setMessage("Application submitted successfully! It is now visible to faculty reviewers.");
+      setMessageType("success");
       setTitle("");
       setReason("");
-      setDocumentCid("");
-      setAmount("");
+      setAmount("300");
+      if (onApplicationSubmitted) onApplicationSubmitted();
     } catch (error) {
-      setMessage(error.reason || error.shortMessage || error.message);
+      setMessage(error.reason || error.shortMessage || error.message || "Failed to submit application");
+      setMessageType("error");
+    } finally {
+      setLoading(false);
     }
   }
 
   return (
-    <div style={{ padding: "2rem", fontFamily: "Arial" }}>
-      <h2>Apply for Funding</h2>
+    <div className="card-panel">
+      <div className="panel-header">
+        <div>
+          <h2>Apply for Student Funding</h2>
+          <p className="subtitle">
+            Submit an academic grant proposal. Multi-party faculty approval (2 of 2) required for disbursement.
+          </p>
+        </div>
+        <span className="panel-badge">Grant Request</span>
+      </div>
 
-      <input
-        type="text"
-        placeholder="Application title (Example: Laptop Support)"
-        value={title}
-        onChange={(event) => setTitle(event.target.value)}
-        style={{ width: "350px", padding: "8px" }}
-      />
+      {!isRegistered && (
+        <div className="alert alert-warning" style={{ marginBottom: "20px" }}>
+          ⚠️ Notice: Your connected wallet ({address ? `${address.slice(0, 6)}...${address.slice(-4)}` : "None"}) is not yet registered in the Student Registry. Please register on the "Student" tab first, or switch to the pre-registered student profile.
+        </div>
+      )}
 
-      <br /><br />
+      <div className="form-container">
+        <div className="form-group">
+          <label>Proposal Title</label>
+          <input
+            className="cyber-input"
+            type="text"
+            placeholder="e.g. GPU Compute Credits for AI Thesis"
+            value={title}
+            onChange={(e) => setTitle(e.target.value)}
+            disabled={loading}
+          />
+        </div>
 
-      <textarea
-        placeholder="Explain why you need funding"
-        value={reason}
-        onChange={(event) => setReason(event.target.value)}
-        rows="4"
-        style={{ width: "350px", padding: "8px" }}
-      />
+        <div className="form-group">
+          <label>Reason / Academic Justification</label>
+          <textarea
+            className="cyber-input"
+            rows="4"
+            placeholder="Detailed academic justification and budget breakdown..."
+            value={reason}
+            onChange={(e) => setReason(e.target.value)}
+            disabled={loading}
+          />
+        </div>
 
-      <br /><br />
+        <div className="form-row-2">
+          <div className="form-group">
+            <label>Requested Amount (CRED Tokens)</label>
+            <div className="input-with-affix">
+              <input
+                className="cyber-input"
+                type="number"
+                min="1"
+                placeholder="Amount"
+                value={amount}
+                onChange={(e) => setAmount(e.target.value)}
+                disabled={loading}
+              />
+              <span className="input-affix">CRED</span>
+            </div>
+            <span className="helper-text">Disbursed with full 18-decimal token precision</span>
+          </div>
 
-      <input
-        type="text"
-        placeholder="Document CID (temporary example: QmExample123)"
-        value={documentCid}
-        onChange={(event) => setDocumentCid(event.target.value)}
-        style={{ width: "350px", padding: "8px" }}
-      />
+          <div className="form-group">
+            <label>Supporting Document IPFS CID</label>
+            <input
+              className="cyber-input mono-font"
+              type="text"
+              placeholder="e.g. QmXoypizjW3WknFiJnKLw..."
+              value={documentCid}
+              onChange={(e) => setDocumentCid(e.target.value)}
+              disabled={loading}
+            />
+            <span className="helper-text">
+              <a
+                href={`https://ipfs.io/ipfs/${documentCid}`}
+                target="_blank"
+                rel="noreferrer"
+                className="inline-link"
+              >
+                Inspect IPFS Gateway Preview ↗
+              </a>
+            </span>
+          </div>
+        </div>
 
-      <br /><br />
+        <button
+          className="primary-button large"
+          onClick={submitApplication}
+          disabled={loading || !isRegistered}
+        >
+          {loading ? "Submitting to Blockchain..." : "Submit Application for Dual-Review"}
+        </button>
 
-      <input
-        type="number"
-        min="1"
-        placeholder="Requested amount in CRED tokens"
-        value={amount}
-        onChange={(event) => setAmount(event.target.value)}
-        style={{ width: "350px", padding: "8px" }}
-      />
-
-      <br /><br />
-
-      <button onClick={submitApplication}>
-        Submit Funding Application
-      </button>
-
-      <p>{message}</p>
+        {message && (
+          <div className={`alert alert-${messageType}`} style={{ marginTop: "20px" }}>
+            {message}
+          </div>
+        )}
+      </div>
     </div>
   );
 }
