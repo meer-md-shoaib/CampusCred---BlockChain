@@ -100,7 +100,21 @@ export default function ApplicationTracker({ provider, address }) {
         </div>
       </div>
 
-
+      <div className="tracker-controls">
+        <button
+          className={`filter-chip ${!filterMine ? "active" : ""}`}
+          onClick={() => setFilterMine(false)}
+        >
+          All Applications ({applications.length})
+        </button>
+        <button
+          className={`filter-chip ${filterMine ? "active" : ""}`}
+          onClick={() => setFilterMine(true)}
+          disabled={!address}
+        >
+          My Submissions ({address ? applications.filter((a) => a.student.toLowerCase() === address.toLowerCase()).length : 0})
+        </button>
+      </div>
 
       {displayedApps.length === 0 ? (
         <div className="empty-state">
