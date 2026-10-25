@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { BrowserProvider, Contract } from "ethers";
+import { BrowserProvider, Contract, parseUnits } from "ethers";
 import {
   CONTRACT_ADDRESSES,
   fundingApplicationAbi,
@@ -30,11 +30,12 @@ export default function ApplyForFunding() {
 
       setMessage("Confirm the application transaction in MetaMask...");
 
+      const parsedAmount = parseUnits(amount.toString(), 18);
       const tx = await fundingContract.submitApplication(
         title,
         reason,
         documentCid,
-        amount
+        parsedAmount
       );
 
       await tx.wait();
