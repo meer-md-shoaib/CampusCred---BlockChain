@@ -10,6 +10,7 @@ contract StudentRegistry {
         bool isVerified;
     }
 
+    address public owner;
     mapping(address => Student) public students;
     address[] public studentAddresses;
 
@@ -21,6 +22,15 @@ contract StudentRegistry {
     );
 
     event StudentVerified(address indexed wallet, bool verified);
+
+    modifier onlyOwner() {
+        require(msg.sender == owner, "Only owner can verify");
+        _;
+    }
+
+    constructor() {
+        owner = msg.sender;
+    }
 
     function registerStudent(
         string memory _studentId,
@@ -34,7 +44,7 @@ contract StudentRegistry {
             name: _name,
             department: _department,
             isRegistered: true,
-            isVerified: false
+            isVerified: true
         });
 
         studentAddresses.push(msg.sender);
@@ -47,7 +57,8 @@ contract StudentRegistry {
         );
     }
 
-    function verifyStudent(address _student) external {
+    function verifyStudent(address _student) external onlyOwner {
+        require(students[_student].isRegistered, "Student not registered");
         students[_student].isVerified = true;
 
         emit StudentVerified(_student, true);
@@ -59,9 +70,9 @@ contract StudentRegistry {
         require(students[_student].isRegistered, "Student not found");
         return students[_student];
     }
-    function isStudentRegistered(address _student) external view returns (bool) 
-    {
-    return students[_student].isRegistered;
+
+    function isStudentRegistered(address _student) external view returns (bool) {
+        return students[_student].isRegistered;
     }
 
 }
