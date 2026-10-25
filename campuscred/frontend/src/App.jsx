@@ -1,5 +1,13 @@
-import { useState } from "react";
-import { connectWallet } from "./connectWallet";
+import { useState, useEffect } from "react";
+import { BrowserProvider, Contract, formatUnits } from "ethers";
+import { connectWallet, connectDemoProfile } from "./connectWallet";
+import {
+  DEMO_PROFILES,
+  CONTRACT_ADDRESSES,
+  fundingApplicationAbi,
+  studentRegistryAbi,
+  campusTokenAbi,
+} from "./contracts";
 import RegisterStudent from "./RegisterStudent";
 import ApplyForFunding from "./ApplyForFunding";
 import AdminPanel from "./AdminPanel";
@@ -7,11 +15,12 @@ import ReviewerPanel from "./ReviewerPanel";
 import ApplicationTracker from "./ApplicationTracker";
 
 const TABS = [
-  { id: "student", label: "Student", icon: "🎓" },
-  { id: "apply", label: "Apply", icon: "📝" },
-  { id: "reviewer", label: "Reviewer", icon: "✅" },
-  { id: "admin", label: "Admin", icon: "🛡️" },
-  { id: "track", label: "Track", icon: "🔍" },
+  { id: "student", label: "Student Profile", icon: "🎓" },
+  { id: "apply", label: "Apply for Grant", icon: "📝" },
+  { id: "reviewer", label: "Reviewer Portal", icon: "✅" },
+  { id: "admin", label: "Admin & Treasury", icon: "🛡️" },
+  { id: "track", label: "Application Tracker", icon: "🔍" },
+  { id: "profiles", label: "Profiles & Keys", icon: "🔑" },
 ];
 
 function shortenAddress(address) {
@@ -20,18 +29,80 @@ function shortenAddress(address) {
 }
 
 function App() {
-  const [address, setAddress] = useState("");
+  const [walletInfo, setWalletInfo] = useState(null);
   const [connecting, setConnecting] = useState(false);
   const [error, setError] = useState("");
   const [activeTab, setActiveTab] = useState("student");
+  const [activeRoleBadge, setActiveRoleBadge] = useState("Connected");
+  const [tokenBalance, setTokenBalance] = useState("0");
+  const [copiedKey, setCopiedKey] = useState("");
 
-  async function handleConnect() {
-    setError("");
-    setConnecting(true);
+  // Connect on load to default profile (Admin) for instant experience if no metamask
+  useEffect(() => {
+    handleSelectProfile(DEMO_PROFILES[0]);
+  }, []);
+
+  useEffect(() => {
+    if (walletInfo?.address) {
+      detectRolesAndBalance();
+    }
+  }, [walletInfo?.address]);
+
+  async function detectRolesAndBalance() {
+    if (!walletInfo?.provider || !walletInfo?.address) return;
 
     try {
-      const wallet = await connectWallet();
-      setAddress(wallet.address);
+      const { provider, address } = walletInfo;
+      const funding = new Contract(
+        CONTRACT_ADDRESSES.fundingApplication,
+        fundingApplicationAbi,
+        provider
+      );
+      const registry = new Contract(
+        CONTRACT_ADDRESSES.studentRegistry,
+        studentRegistryAbi,
+        provider
+      );
+      const token = new Contract(
+        CONTRACT_ADDRESSES.campusToken,
+        campusTokenAbi,
+        provider
+      );
+
+      const [adminAddr, isRev, isStudent, bal] = await Promise.all([
+        funding.admin().catch(() => ""),
+        funding.isReviewer(address).catch(() => false),
+        registry.isStudentRegistered(address).catch(() => false),
+        token.balanceOf(address).catch(() => 0n),
+      ]);
+
+      const isAdmin = adminAddr.toLowerCase() === address.toLowerCase();
+
+      if (isAdmin && isRev) {
+        setActiveRoleBadge("🛡️ Admin & Reviewer 1");
+      } else if (isAdmin) {
+        setActiveRoleBadge("🛡️ Admin");
+      } else if (isRev) {
+        setActiveRoleBadge("✅ Faculty Reviewer 2");
+      } else if (isStudent) {
+        setActiveRoleBadge("🎓 Verified Student");
+      } else {
+        setActiveRoleBadge("👤 Unregistered User");
+      }
+
+      setTokenBalance(formatUnits(bal, 18));
+    } catch (err) {
+      console.error("Role detection error:", err);
+    }
+  }
+
+  async function handleConnectMetaMask() {
+    setError("");
+    setConnecting(true);
+    try {
+      const res = await connectWallet();
+      setWalletInfo(res);
+      setActiveRoleBadge("Detecting...");
     } catch (walletError) {
       setError(walletError.message || "Unable to connect MetaMask.");
     } finally {
@@ -39,38 +110,96 @@ function App() {
     }
   }
 
+  async function handleSelectProfile(profile) {
+    setError("");
+    setConnecting(true);
+    try {
+      const res = await connectDemoProfile(profile);
+      setWalletInfo(res);
+      setActiveRoleBadge(profile.badge);
+    } catch (profileError) {
+      setError(profileError.message || "Failed to switch profile.");
+    } finally {
+      setConnecting(false);
+    }
+  }
+
   function handleDisconnect() {
-    setAddress("");
+    setWalletInfo(null);
+    setActiveRoleBadge("");
     setActiveTab("student");
     setError("");
   }
 
+  function copyToClipboard(text, id) {
+    navigator.clipboard?.writeText(text);
+    setCopiedKey(id);
+    setTimeout(() => setCopiedKey(""), 2000);
+  }
+
+  const currentAddress = walletInfo?.address || "";
+
   return (
     <div className="app">
+      {/* Global Application Header */}
       <header className="app-header">
         <div className="brand">
           <div className="brand-icon">🎓</div>
           <div>
             <h1>CampusCred</h1>
-            <p>Decentralized Student Funding Platform</p>
+            <p>Decentralized Student Micro-Funding System</p>
           </div>
         </div>
 
+        {/* Profile Switcher & Wallet Bar */}
         <div className="wallet-area">
-          {address ? (
+          {/* Quick Profile Selector Dropdown */}
+          <div className="profile-selector-wrap">
+            <span className="profile-select-label">Active Persona:</span>
+            <select
+              className="cyber-select"
+              value={
+                DEMO_PROFILES.find(
+                  (p) => p.address.toLowerCase() === currentAddress.toLowerCase()
+                )?.id || "custom"
+              }
+              onChange={(e) => {
+                const selected = DEMO_PROFILES.find((p) => p.id === e.target.value);
+                if (selected) handleSelectProfile(selected);
+              }}
+            >
+              {DEMO_PROFILES.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.badge} — {p.name}
+                </option>
+              ))}
+              {walletInfo?.isMetaMask && <option value="custom">🦊 MetaMask Wallet</option>}
+            </select>
+          </div>
+
+          {currentAddress ? (
             <>
+              <div className="role-chip">
+                {activeRoleBadge}
+              </div>
+
+              <div className="balance-chip" title="CRED Token Balance">
+                💰 {Number(tokenBalance).toLocaleString()} CRED
+              </div>
+
               <div className="wallet-chip">
                 <span className="wallet-dot" />
-                {shortenAddress(address)}
+                {shortenAddress(currentAddress)}
               </div>
+
               <button className="ghost-button" onClick={handleDisconnect}>
-                Disconnect
+                Reset
               </button>
             </>
           ) : (
             <button
               className="primary-button"
-              onClick={handleConnect}
+              onClick={handleConnectMetaMask}
               disabled={connecting}
             >
               {connecting ? "Connecting..." : "Connect MetaMask"}
@@ -80,87 +209,163 @@ function App() {
       </header>
 
       {error && (
-        <div className="alert alert-error">
-          <strong>Connection error:</strong> {error}
+        <div className="alert alert-error" style={{ margin: "16px 32px 0" }}>
+          <strong>Error:</strong> {error}
         </div>
       )}
 
-      {!address ? (
-        <main className="welcome-card">
-          <h2>Welcome to CampusCred</h2>
-          <p>
-            Connect your MetaMask wallet to register as a student, request
-            financial support, review applications, approve funding, and track
-            CRED disbursements.
-          </p>
+      {/* Navigation Tabs */}
+      <nav className="tab-bar">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            className={`tab-button ${activeTab === tab.id ? "active" : ""}`}
+            onClick={() => setActiveTab(tab.id)}
+          >
+            <span>{tab.icon}</span>
+            {tab.label}
+          </button>
+        ))}
+      </nav>
 
-          <div className="feature-grid">
-            <div className="feature">
-              <span>🎓</span>
-              <h3>Register</h3>
-              <p>Create a verified student profile on-chain.</p>
+      {/* Main Content Viewports */}
+      <main className="content">
+        {activeTab === "student" && (
+          <RegisterStudent
+            signer={walletInfo?.signer}
+            provider={walletInfo?.provider}
+            address={currentAddress}
+            onProfileUpdate={detectRolesAndBalance}
+          />
+        )}
+
+        {activeTab === "apply" && (
+          <ApplyForFunding
+            signer={walletInfo?.signer}
+            provider={walletInfo?.provider}
+            address={currentAddress}
+            onApplicationSubmitted={() => setActiveTab("track")}
+          />
+        )}
+
+        {activeTab === "reviewer" && (
+          <ReviewerPanel
+            signer={walletInfo?.signer}
+            provider={walletInfo?.provider}
+            address={currentAddress}
+            onReviewAction={detectRolesAndBalance}
+          />
+        )}
+
+        {activeTab === "admin" && (
+          <AdminPanel
+            signer={walletInfo?.signer}
+            provider={walletInfo?.provider}
+            address={currentAddress}
+            onAdminAction={detectRolesAndBalance}
+          />
+        )}
+
+        {activeTab === "track" && (
+          <ApplicationTracker
+            provider={walletInfo?.provider}
+            address={currentAddress}
+          />
+        )}
+
+        {/* Dedicated Persona & Private Keys Tab */}
+        {activeTab === "profiles" && (
+          <div className="card-panel">
+            <div className="panel-header">
+              <div>
+                <h2>Demo Profiles & Assigned Private Keys</h2>
+                <p className="subtitle">
+                  Use these pre-funded test accounts to verify role-based permissions and multi-party approvals.
+                </p>
+              </div>
+              <span className="panel-badge">Security & Access</span>
             </div>
 
-            <div className="feature">
-              <span>📝</span>
-              <h3>Apply</h3>
-              <p>Submit a funding request with supporting documents.</p>
+            <div className="alert alert-info" style={{ marginBottom: "24px" }}>
+              💡 <strong>Instant Testing:</strong> Click <strong>"Switch to This Profile"</strong> to instantly authenticate as that persona without any extension, or copy the <strong>Private Key</strong> into MetaMask (import account) for live extension testing!
             </div>
 
-            <div className="feature">
-              <span>✅</span>
-              <h3>Approve</h3>
-              <p>Authorized reviewers evaluate and approve applications.</p>
-            </div>
+            <div className="profiles-table-container">
+              <table className="cyber-table">
+                <thead>
+                  <tr>
+                    <th>Role & Persona</th>
+                    <th>Permissions & Purpose</th>
+                    <th>Wallet Address</th>
+                    <th>Assigned Private Key</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {DEMO_PROFILES.map((p) => {
+                    const isCurrent =
+                      currentAddress.toLowerCase() === p.address.toLowerCase();
 
-            <div className="feature">
-              <span>💰</span>
-              <h3>Receive CRED</h3>
-              <p>Approved students receive CRED tokens directly.</p>
+                    return (
+                      <tr key={p.id} className={isCurrent ? "active-row" : ""}>
+                        <td>
+                          <div className="persona-cell">
+                            <span className="persona-badge">{p.badge}</span>
+                            <strong>{p.name}</strong>
+                          </div>
+                        </td>
+                        <td>
+                          <span className="desc-text">{p.description}</span>
+                        </td>
+                        <td>
+                          <div className="key-copy-group">
+                            <span className="mono-font">{shortenAddress(p.address)}</span>
+                            <button
+                              className="ghost-button mini"
+                              onClick={() => copyToClipboard(p.address, `addr-${p.id}`)}
+                            >
+                              {copiedKey === `addr-${p.id}` ? "Copied!" : "Copy"}
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          <div className="key-copy-group">
+                            <span className="mono-font private-key-blur">
+                              {p.privateKey.slice(0, 10)}...{p.privateKey.slice(-6)}
+                            </span>
+                            <button
+                              className="ghost-button mini"
+                              onClick={() => copyToClipboard(p.privateKey, `pk-${p.id}`)}
+                            >
+                              {copiedKey === `pk-${p.id}` ? "Copied Key!" : "Copy Key"}
+                            </button>
+                          </div>
+                        </td>
+                        <td>
+                          {isCurrent ? (
+                            <span className="status-pill status-approved">Active Now</span>
+                          ) : (
+                            <button
+                              className="primary-button mini"
+                              onClick={() => handleSelectProfile(p)}
+                            >
+                              Switch ➔
+                            </button>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
             </div>
           </div>
+        )}
+      </main>
 
-          <button
-            className="primary-button large"
-            onClick={handleConnect}
-            disabled={connecting}
-          >
-            {connecting ? "Connecting..." : "Connect MetaMask"}
-          </button>
-        </main>
-      ) : (
-        <>
-          <nav className="tab-bar">
-            {TABS.map((tab) => (
-              <button
-                key={tab.id}
-                className={`tab-button ${
-                  activeTab === tab.id ? "active" : ""
-                }`}
-                onClick={() => setActiveTab(tab.id)}
-              >
-                <span>{tab.icon}</span>
-                {tab.label}
-              </button>
-            ))}
-          </nav>
-
-          <main className="content">
-            {activeTab === "student" && <RegisterStudent />}
-
-            {activeTab === "apply" && <ApplyForFunding />}
-
-            {activeTab === "reviewer" && <ReviewerPanel />}
-
-            {activeTab === "admin" && <AdminPanel />}
-
-            {activeTab === "track" && <ApplicationTracker />}
-          </main>
-        </>
-      )}
-
+      {/* Footer */}
       <footer className="app-footer">
-        <p>CampusCred • Blockchain-Based Student Funding System</p>
+        <p>CampusCred • Multi-Party Student Funding Protocol on Ethereum</p>
       </footer>
     </div>
   );
