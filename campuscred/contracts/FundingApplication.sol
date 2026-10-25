@@ -141,6 +141,7 @@ contract FundingApplication {
         Application storage application = applications[_applicationId];
 
         require(application.exists, "Application not found");
+        require(application.student != msg.sender, "Cannot approve own application");
 
         require(
             application.status == Status.Submitted ||
@@ -177,6 +178,7 @@ contract FundingApplication {
         Application storage application = applications[_applicationId];
 
         require(application.exists, "Application not found");
+        require(application.student != msg.sender, "Cannot approve own application");
 
         require(
             application.status == Status.Submitted ||
@@ -195,6 +197,7 @@ contract FundingApplication {
         Application storage application = applications[_applicationId];
 
         require(application.exists, "Application not found");
+        require(application.student != msg.sender, "Cannot approve own application");
         require(application.status == Status.Approved, "Not approved");
 
         application.status = Status.Disbursed;
@@ -219,6 +222,7 @@ contract FundingApplication {
         Application storage application = applications[_applicationId];
 
         require(application.exists, "Application not found");
+        require(application.student != msg.sender, "Cannot approve own application");
         require(
             application.status == Status.Disbursed,
             "Not disbursed"
@@ -257,6 +261,7 @@ contract FundingApplication {
         Application memory application = applications[_applicationId];
 
         require(application.exists, "Application not found");
+        require(application.student != msg.sender, "Cannot approve own application");
 
         return (
             application.id,
