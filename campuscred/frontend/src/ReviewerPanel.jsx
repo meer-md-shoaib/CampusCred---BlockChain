@@ -233,6 +233,12 @@ export default function ReviewerPanel({ signer, provider, address, onReviewActio
                     </span>
                   )}
 
+                  {isSelf && (
+                    <span className="approval-badge-warning">
+                      🛡️ Self-approval blocked: You cannot vote on your own proposal
+                    </span>
+                  )}
+
                   {isReviewable && isReviewer && !alreadyApproved && !isSelf && (
                     <div className="action-buttons-group">
                       <button
