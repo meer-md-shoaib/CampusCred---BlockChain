@@ -342,6 +342,16 @@ CampusCred was developed as a team project for the **Foundations of Blockchain T
 
 ---
 
+## Team Members are: 
+### Meer Mohammed Shoaib
+### Mohommed Adil
+### Nihaal R
+### Shreyas Bharadwaj
+### Praveen Vaddar
+### Yogesh Gowda M C
+### Gowtham Selvaraj
+---
+
 ## 📄 License
 
 This project is created for educational purposes and as Blockchain Project part of a blockchain technology course.
