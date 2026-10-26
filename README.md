@@ -355,3 +355,5 @@ CampusCred was developed as a team project for the **Foundations of Blockchain T
 ## 📄 License
 
 This project is created for educational purposes and as Blockchain Project part of a blockchain technology course.
+
+## We thank Miss Nazneen to give us this great opportunity to learn and explore the blockchain concepts and apply it in our works
