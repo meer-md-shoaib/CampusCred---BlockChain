@@ -1816,7 +1816,7 @@ form input[type="submit"] {
 }
 
 /* CampusCred 2.0 — Blockchain Document Proof */
-.blockchain-result {
+.blockchain-registration {
   margin-top: 18px;
   padding: 16px;
   border: 1px solid rgba(0, 255, 157, 0.4);
@@ -1825,23 +1825,36 @@ form input[type="submit"] {
 }
 
 .blockchain-label {
-  margin: 0 0 10px;
+  margin: 0 0 8px;
   color: #00ff9d;
   font-size: 12px;
   letter-spacing: 1px;
 }
 
-.blockchain-details p {
-  margin: 5px 0;
+.blockchain-registration p {
+  margin: 0 0 12px;
   color: #b7c9d8;
   font-size: 13px;
+  line-height: 1.6;
 }
 
-.blockchain-hash,
-.blockchain-cid {
-  color: #ffffff;
-  font-family: monospace;
-  font-size: 13px;
-  word-break: break-all;
-  line-height: 1.6;
+.register-button {
+  padding: 11px 18px;
+  border: 1px solid #00ff9d;
+  border-radius: 8px;
+  color: #04120c;
+  background: #00ff9d;
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.register-button:hover:not(:disabled) {
+  background: #00e58a;
+  box-shadow: 0 0 20px rgba(0, 255, 157, 0.35);
+}
+
+.register-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
 }

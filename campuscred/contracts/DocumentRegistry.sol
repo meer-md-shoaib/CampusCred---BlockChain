@@ -7,7 +7,7 @@ contract DocumentRegistry {
         string ipfsCid;
         address owner;
         uint256 uploadedAt;
-        bool registered;
+        bool exists;
     }
 
     mapping(bytes32 => Document) private documents;
@@ -22,18 +22,18 @@ contract DocumentRegistry {
 
     function registerDocument(
         bytes32 _documentHash,
-        string memory _ipfsCid
+        string calldata _ipfsCid
     ) external {
         require(_documentHash != bytes32(0), "Invalid document hash");
         require(bytes(_ipfsCid).length > 0, "Invalid IPFS CID");
-        require(!documents[_documentHash].registered, "Document already registered");
+        require(!documents[_documentHash].exists, "Document already registered");
 
         documents[_documentHash] = Document({
             documentHash: _documentHash,
             ipfsCid: _ipfsCid,
             owner: msg.sender,
             uploadedAt: block.timestamp,
-            registered: true
+            exists: true
         });
 
         ownerDocuments[msg.sender].push(_documentHash);
@@ -46,33 +46,34 @@ contract DocumentRegistry {
         );
     }
 
+    function verifyDocument(
+        bytes32 _documentHash
+    ) external view returns (bool) {
+        return documents[_documentHash].exists;
+    }
+
     function getDocument(
         bytes32 _documentHash
     )
         external
         view
         returns (
+            bytes32 documentHash,
             string memory ipfsCid,
             address owner,
             uint256 uploadedAt,
-            bool registered
+            bool exists
         )
     {
         Document memory document = documents[_documentHash];
-        require(document.registered, "Document not found");
 
         return (
+            document.documentHash,
             document.ipfsCid,
             document.owner,
             document.uploadedAt,
-            document.registered
+            document.exists
         );
-    }
-
-    function isDocumentRegistered(
-        bytes32 _documentHash
-    ) external view returns (bool) {
-        return documents[_documentHash].registered;
     }
 
     function getOwnerDocuments(

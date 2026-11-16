@@ -2,13 +2,19 @@ import { useState, useEffect } from "react";
 import { BrowserProvider, Contract, parseUnits } from "ethers";
 import {
   CONTRACT_ADDRESSES,
-  documentRegistryAbi,
   fundingApplicationAbi,
   studentRegistryAbi,
 } from "./contracts";
 import DocumentUpload from "./DocumentUpload";
 
-export default function ApplyForFunding({ signer, provider, address, onApplicationSubmitted }) {
+export default function ApplyForFunding({
+  signer,
+  provider,
+  address,
+  documentRegistryContract,
+  onConnectMetaMask,
+  onApplicationSubmitted,
+}) {
   const [title, setTitle] = useState("");
   const [reason, setReason] = useState("");
   const [documentCid, setDocumentCid] = useState("");
@@ -18,36 +24,50 @@ export default function ApplyForFunding({ signer, provider, address, onApplicati
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("info");
   const [isRegistered, setIsRegistered] = useState(false);
+  const [documentRegistered, setDocumentRegistered] = useState(false);
+  const activeDocumentRegistry = documentRegistryContract
+    ? documentRegistryContract.connect(signer || provider)
+    : null;
 
   function handleDocumentReady(document) {
     setDocumentCid(document?.cid || "");
     setDocumentHash(document?.documentHash || "");
+    setDocumentRegistered(Boolean(document?.registered));
   }
 
   useEffect(() => {
-    if (address && provider) {
-      checkRegistration();
-    }
+    if (!address || !provider) return undefined;
+
+    let active = true;
+    const registry = new Contract(
+      CONTRACT_ADDRESSES.studentRegistry,
+      studentRegistryAbi,
+      provider
+    );
+    registry
+      .isStudentRegistered(address)
+      .then((registered) => {
+        if (active) setIsRegistered(registered);
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+
+    return () => {
+      active = false;
+    };
   }, [address, provider]);
 
-  async function checkRegistration() {
-    try {
-      const activeProvider = provider || new BrowserProvider(window.ethereum);
-      const registry = new Contract(
-        CONTRACT_ADDRESSES.studentRegistry,
-        studentRegistryAbi,
-        activeProvider
-      );
-      const reg = await registry.isStudentRegistered(address);
-      setIsRegistered(reg);
-    } catch (err) {
-      console.error(err);
-    }
-  }
-
   async function submitApplication() {
-    if (!title.trim() || !reason.trim() || !documentCid.trim() || !documentHash || !amount) {
-      setMessage("Please fill in every required field.");
+    if (
+      !title.trim() ||
+      !reason.trim() ||
+      !documentCid.trim() ||
+      !documentHash ||
+      !documentRegistered ||
+      !amount
+    ) {
+      setMessage("Complete and register the supporting document before submitting.");
       setMessageType("error");
       return;
     }
@@ -75,38 +95,29 @@ export default function ApplyForFunding({ signer, provider, address, onApplicati
         activeSigner
       );
 
-      const documentRegistryContract = new Contract(
-        CONTRACT_ADDRESSES.documentRegistry,
-        documentRegistryAbi,
-        activeSigner
-      );
-
       // Fix decimals: Convert CRED amount to 18 decimal wei
       const parsedAmount = parseUnits(amount.toString(), 18);
 
-      setMessage("Registering document hash on-chain...");
-      const documentIsRegistered =
-        await documentRegistryContract.isDocumentRegistered(documentHash);
+      if (!activeDocumentRegistry) {
+        throw new Error("Document Registry contract is not connected.");
+      }
 
-      if (documentIsRegistered) {
-        const [registeredCid, documentOwner] =
-          await documentRegistryContract.getDocument(documentHash);
-        const signerAddress = await activeSigner.getAddress();
+      const documentExists =
+        await activeDocumentRegistry.verifyDocument(documentHash);
+      if (!documentExists) {
+        throw new Error("Register the supporting document on-chain first.");
+      }
 
-        if (
-          registeredCid !== documentCid.trim() ||
-          documentOwner.toLowerCase() !== signerAddress.toLowerCase()
-        ) {
-          throw new Error(
-            "This document hash is already registered to a different owner or CID."
-          );
-        }
-      } else {
-        const registrationTx = await documentRegistryContract.registerDocument(
-          documentHash,
-          documentCid.trim()
+      const [, registeredCid, documentOwner] =
+        await activeDocumentRegistry.getDocument(documentHash);
+      const signerAddress = await activeSigner.getAddress();
+      if (
+        registeredCid !== documentCid.trim() ||
+        documentOwner.toLowerCase() !== signerAddress.toLowerCase()
+      ) {
+        throw new Error(
+          "The registered document CID or owner does not match this application."
         );
-        await registrationTx.wait();
       }
 
       setMessage("Submitting funding application to the blockchain...");
@@ -203,7 +214,10 @@ export default function ApplyForFunding({ signer, provider, address, onApplicati
             type="text"
             placeholder="Enter an IPFS CID or upload a document below"
             value={documentCid}
-            onChange={(event) => setDocumentCid(event.target.value)}
+            onChange={(event) => {
+              setDocumentCid(event.target.value);
+              setDocumentRegistered(false);
+            }}
             disabled={loading}
           />
           {documentCid && (
@@ -220,7 +234,11 @@ export default function ApplyForFunding({ signer, provider, address, onApplicati
           )}
         </div>
 
-        <DocumentUpload onDocumentReady={handleDocumentReady} signer={signer} />
+        <DocumentUpload
+          onDocumentReady={handleDocumentReady}
+          documentRegistryContract={documentRegistryContract}
+          onConnectMetaMask={onConnectMetaMask}
+        />
 
         <button
           className="primary-button large"

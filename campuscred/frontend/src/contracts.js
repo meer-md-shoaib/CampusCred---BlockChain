@@ -1,8 +1,8 @@
 export const CONTRACT_ADDRESSES = {
-  campusToken: "0x0165878A594ca255338adfa4d48449f69242Eb8F",
-  studentRegistry: "0xa513E6E4b8f2a923D98304ec87F64353C4D5C853",
-  documentRegistry: "0x2279B7A0a67DB372996a5FaB50D91eAA73d2eBe6",
-  fundingApplication: "0x8A791620dd6260079BF849Dc5567aDC3F2FdC318",
+  campusToken: "0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f",
+  studentRegistry: "0x4A679253410272dd5232B3Ff7cF5dbB88f295319",
+  documentRegistry: "0x7a2088a1bFc9d81c55368AE168C2C02570cB814F",
+  fundingApplication: "0x09635F643e140090A9A8Dcd712eD6285858ceBef",
 };
 
 export const DEMO_PROFILES = [
@@ -88,8 +88,8 @@ export const fundingApplicationAbi = [
 
 export const documentRegistryAbi = [
   "function registerDocument(bytes32 documentHash, string ipfsCid)",
-  "function getDocument(bytes32 documentHash) view returns (string ipfsCid, address owner, uint256 uploadedAt, bool registered)",
-  "function isDocumentRegistered(bytes32 documentHash) view returns (bool)",
+  "function verifyDocument(bytes32 documentHash) view returns (bool)",
+  "function getDocument(bytes32 documentHash) view returns (bytes32 documentHash, string ipfsCid, address owner, uint256 uploadedAt, bool exists)",
   "function getOwnerDocuments(address owner) view returns (bytes32[])",
 ];
 

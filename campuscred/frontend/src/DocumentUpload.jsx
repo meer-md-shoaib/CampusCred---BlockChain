@@ -8,9 +8,12 @@ import {
   downloadDecryptedFile,
 } from "./crypto";
 import { uploadEncryptedFileToIPFS } from "./ipfs";
-import { CONTRACT_ADDRESSES, documentRegistryAbi } from "./contracts";
 
-function DocumentUpload({ onDocumentReady, signer }) {
+function DocumentUpload({
+  onDocumentReady,
+  documentRegistryContract,
+  onConnectMetaMask,
+}) {
   const [selectedFile, setSelectedFile] = useState(null);
   const [documentHash, setDocumentHash] = useState("");
   const [encryptedFile, setEncryptedFile] = useState(null);
@@ -26,6 +29,7 @@ function DocumentUpload({ onDocumentReady, signer }) {
   const [isUploadedToIPFS, setIsUploadedToIPFS] = useState(false);
   const [isRegisteringOnChain, setIsRegisteringOnChain] = useState(false);
   const [isRegisteredOnChain, setIsRegisteredOnChain] = useState(false);
+  const [registrationMessage, setRegistrationMessage] = useState("");
 
   async function handleFileChange(event) {
     const file = event.target.files[0];
@@ -44,6 +48,7 @@ function DocumentUpload({ onDocumentReady, signer }) {
     setIsUploadedToIPFS(false);
     setIsRegisteringOnChain(false);
     setIsRegisteredOnChain(false);
+    setRegistrationMessage("");
     onDocumentReady?.(null);
 
     if (!file) {
@@ -97,54 +102,11 @@ function DocumentUpload({ onDocumentReady, signer }) {
         setIpfsUrl(ipfsResult.ipfsUrl);
         setIsUploadedToIPFS(true);
         setIsUploadingToIPFS(false);
-
-        setIsRegisteringOnChain(true);
-        const activeSigner =
-          signer ||
-          (window.ethereum
-            ? await new ethers.BrowserProvider(window.ethereum).getSigner()
-            : null);
-
-        if (!activeSigner) {
-          throw new Error("Connect a wallet to register the document on-chain.");
-        }
-
-        const documentRegistry = new ethers.Contract(
-          CONTRACT_ADDRESSES.documentRegistry,
-          documentRegistryAbi,
-          activeSigner
-        );
-        const hashBytes = ethers.getBytes(hash);
-        const hashBytes32 = ethers.toBeHex(ethers.hexlify(hashBytes), 32);
-        const signerAddress = await activeSigner.getAddress();
-        const alreadyRegistered =
-          await documentRegistry.isDocumentRegistered(hashBytes32);
-
-        if (alreadyRegistered) {
-          const [registeredCid, documentOwner] =
-            await documentRegistry.getDocument(hashBytes32);
-
-          if (
-            registeredCid !== ipfsResult.cid ||
-            documentOwner.toLowerCase() !== signerAddress.toLowerCase()
-          ) {
-            throw new Error(
-              "This document hash is already registered to a different CID or owner."
-            );
-          }
-        } else {
-          const tx = await documentRegistry.registerDocument(
-            hashBytes32,
-            ipfsResult.cid
-          );
-          await tx.wait();
-        }
-
-        setIsRegisteredOnChain(true);
         onDocumentReady?.({
-          documentHash: hashBytes32,
+          documentHash: hash,
           cid: ipfsResult.cid,
           ipfsUrl: ipfsResult.ipfsUrl,
+          registered: false,
         });
       } catch (ipfsError) {
         setError(ipfsError.message);
@@ -157,6 +119,90 @@ function DocumentUpload({ onDocumentReady, signer }) {
       setError("Unable to process document. Please try again.");
     } finally {
       setIsProcessing(false);
+    }
+  }
+
+  async function handleRegisterOnChain() {
+    try {
+      setError("");
+      setIsRegisteringOnChain(true);
+
+      if (!documentHash || !ipfsCid) {
+        throw new Error("Document hash or IPFS CID is missing.");
+      }
+
+      if (!documentRegistryContract || !onConnectMetaMask) {
+        throw new Error("Document Registry or MetaMask connection is unavailable.");
+      }
+
+      const walletInfo = await onConnectMetaMask();
+      const signer = walletInfo?.signer;
+      if (!signer || !walletInfo.isMetaMask) {
+        throw new Error("Connect a MetaMask account to approve the transaction.");
+      }
+
+      const provider = walletInfo.provider;
+      const signerAddress = await signer.getAddress();
+      const network = await provider.getNetwork();
+      if (network.chainId !== 31337n) {
+        throw new Error(
+          "Switch MetaMask to the local Hardhat network (chain ID 31337) to register this document."
+        );
+      }
+
+      const documentRegistry = documentRegistryContract.connect(signer);
+
+      const hashBytes = ethers.getBytes(documentHash);
+      const alreadyExists = await documentRegistry.verifyDocument(hashBytes);
+
+      if (alreadyExists) {
+        const [, registeredCid, owner] =
+          await documentRegistry.getDocument(hashBytes);
+        if (
+          registeredCid !== ipfsCid ||
+          owner.toLowerCase() !== signerAddress.toLowerCase()
+        ) {
+          throw new Error(
+            "This document hash is already registered to a different CID or owner."
+          );
+        }
+
+        setRegistrationMessage("This document is already registered on-chain.");
+        setIsRegisteredOnChain(true);
+        onDocumentReady?.({
+          documentHash,
+          cid: ipfsCid,
+          ipfsUrl,
+          registered: true,
+        });
+        return;
+      }
+
+      setRegistrationMessage("Confirm the registration transaction in MetaMask.");
+      const tx = await documentRegistry.registerDocument(hashBytes, ipfsCid);
+      const receipt = await tx.wait();
+      if (!receipt || receipt.status !== 1) {
+        throw new Error("Document registration transaction was not confirmed.");
+      }
+
+      setRegistrationMessage(
+        "Document hash and IPFS CID registered successfully on the blockchain."
+      );
+      setIsRegisteredOnChain(true);
+      onDocumentReady?.({
+        documentHash,
+        cid: ipfsCid,
+        ipfsUrl,
+        registered: true,
+      });
+    } catch (err) {
+      setError(
+        err?.shortMessage ||
+          err?.message ||
+          "Document registration failed. Please try again."
+      );
+    } finally {
+      setIsRegisteringOnChain(false);
     }
   }
 
@@ -267,32 +313,37 @@ function DocumentUpload({ onDocumentReady, signer }) {
         </div>
       )}
 
-      {isRegisteringOnChain && (
-        <div className="status-message processing">
-          Registering document hash and IPFS CID on blockchain...
+      {isUploadedToIPFS && !isRegisteredOnChain && (
+        <div className="blockchain-registration">
+          <p className="blockchain-label">BLOCKCHAIN DOCUMENT REGISTRATION</p>
+
+          <p>
+            Register the SHA-256 hash and IPFS CID on the blockchain to create a
+            tamper-proof document record.
+          </p>
+
+          {isRegisteringOnChain && (
+            <div className="status-message processing">
+              Registering document hash and IPFS CID on blockchain...
+            </div>
+          )}
+
+          <button
+            type="button"
+            className="register-button"
+            onClick={handleRegisterOnChain}
+            disabled={isRegisteringOnChain}
+          >
+            {isRegisteringOnChain
+              ? "Registering On-Chain..."
+              : "Register Secure Document"}
+          </button>
         </div>
       )}
 
       {isRegisteredOnChain && (
-        <div className="blockchain-result">
-          <p className="blockchain-label">BLOCKCHAIN DOCUMENT PROOF</p>
-
-          <div className="blockchain-details">
-            <p>
-              <strong>Storage Status:</strong> Document Registered On-Chain
-            </p>
-            <p>
-              <strong>Document Hash:</strong>
-            </p>
-            <p className="blockchain-hash">{documentHash}</p>
-            <p>
-              <strong>IPFS CID:</strong>
-            </p>
-            <p className="blockchain-cid">{ipfsCid}</p>
-            <p>
-              <strong>Integrity Protection:</strong> SHA-256 hash stored on blockchain
-            </p>
-          </div>
+        <div className="status-message success">
+          {registrationMessage}
         </div>
       )}
 

@@ -1,9 +1,10 @@
-import { useState, useEffect } from "react";
-import { BrowserProvider, Contract, formatUnits } from "ethers";
+import { useState, useEffect, useMemo, useCallback } from "react";
+import { Contract, formatUnits } from "ethers";
 import { connectWallet, connectDemoProfile } from "./connectWallet";
 import {
   DEMO_PROFILES,
   CONTRACT_ADDRESSES,
+  documentRegistryAbi,
   fundingApplicationAbi,
   studentRegistryAbi,
   campusTokenAbi,
@@ -36,19 +37,24 @@ function App() {
   const [activeRoleBadge, setActiveRoleBadge] = useState("Connected");
   const [tokenBalance, setTokenBalance] = useState("0");
   const [copiedKey, setCopiedKey] = useState("");
+  const documentRegistryContract = useMemo(
+    () =>
+      walletInfo?.signer
+        ? new Contract(
+            CONTRACT_ADDRESSES.documentRegistry,
+            documentRegistryAbi,
+            walletInfo.signer
+          )
+        : null,
+    [walletInfo?.signer]
+  );
 
   // Connect on load to default profile (Admin) for instant experience if no metamask
   useEffect(() => {
     handleSelectProfile(DEMO_PROFILES[0]);
   }, []);
 
-  useEffect(() => {
-    if (walletInfo?.address) {
-      detectRolesAndBalance();
-    }
-  }, [walletInfo?.address]);
-
-  async function detectRolesAndBalance() {
+  const detectRolesAndBalance = useCallback(async () => {
     if (!walletInfo?.provider || !walletInfo?.address) return;
 
     try {
@@ -94,7 +100,13 @@ function App() {
     } catch (err) {
       console.error("Role detection error:", err);
     }
-  }
+  }, [walletInfo]);
+
+  useEffect(() => {
+    if (walletInfo?.address) {
+      void Promise.resolve().then(detectRolesAndBalance);
+    }
+  }, [walletInfo?.address, detectRolesAndBalance]);
 
   async function handleConnectMetaMask() {
     setError("");
@@ -103,8 +115,10 @@ function App() {
       const res = await connectWallet();
       setWalletInfo(res);
       setActiveRoleBadge("Detecting...");
+      return res;
     } catch (walletError) {
       setError(walletError.message || "Unable to connect MetaMask.");
+      throw walletError;
     } finally {
       setConnecting(false);
     }
@@ -244,6 +258,8 @@ function App() {
             signer={walletInfo?.signer}
             provider={walletInfo?.provider}
             address={currentAddress}
+            documentRegistryContract={documentRegistryContract}
+            onConnectMetaMask={handleConnectMetaMask}
             onApplicationSubmitted={() => setActiveTab("track")}
           />
         )}
