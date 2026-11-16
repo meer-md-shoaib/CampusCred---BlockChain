@@ -21,11 +21,17 @@ async function main() {
   const registry = await StudentRegistry.deploy();
   await registry.waitForDeployment();
 
+  const DocumentRegistry =
+    await ethers.getContractFactory("DocumentRegistry");
+  const documentRegistry = await DocumentRegistry.deploy();
+  await documentRegistry.waitForDeployment();
+
   const FundingApplication =
     await ethers.getContractFactory("FundingApplication");
   const funding = await FundingApplication.deploy(
     await token.getAddress(),
-    await registry.getAddress()
+    await registry.getAddress(),
+    await documentRegistry.getAddress()
   );
   await funding.waitForDeployment();
 
@@ -53,10 +59,21 @@ async function main() {
   await regTx.wait();
 
   console.log("Submitting sample funding request (500 CRED)...");
+  const sampleDocumentCid = "QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco";
+  const sampleDocumentHash = ethers.sha256(
+    ethers.toUtf8Bytes("CampusCred sample document")
+  );
+  const documentTx = await documentRegistry.connect(student).registerDocument(
+    sampleDocumentHash,
+    sampleDocumentCid
+  );
+  await documentTx.wait();
+
   const appTx = await funding.connect(student).submitApplication(
     "Final Year AI Hardware Kit",
     "Funding requested for GPU compute credits and edge-AI kit for final year capstone project.",
-    "QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco",
+    sampleDocumentCid,
+    sampleDocumentHash,
     500n * 10n ** 18n
   );
   await appTx.wait();
@@ -64,6 +81,7 @@ async function main() {
   console.log("\nContracts deployed and seeded successfully!");
   console.log("CampusToken:", await token.getAddress());
   console.log("StudentRegistry:", await registry.getAddress());
+  console.log("DocumentRegistry:", await documentRegistry.getAddress());
   console.log("FundingApplication:", await funding.getAddress());
   console.log("Treasury funded with: 100,000 CRED");
   console.log("Reviewers configured: Admin (Account #0), Reviewer 2 (Account #1)");

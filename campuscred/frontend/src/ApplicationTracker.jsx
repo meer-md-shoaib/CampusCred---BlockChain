@@ -58,6 +58,8 @@ export default function ApplicationTracker({ provider, address }) {
           title: app.title,
           reason: app.reason,
           documentCid: app.documentCid,
+          documentHash: app.documentHash,
+          documentVerified: app.documentVerified,
           amount: formatUnits(app.amount, 18),
           status: Number(app.status),
           approvalCount: Number(app.approvalCount),
@@ -195,6 +197,18 @@ export default function ApplicationTracker({ provider, address }) {
                     View on IPFS ↗
                   </a>
                 </div>
+              </div>
+
+              <div className="detail-data-block">
+                <span className="detail-label">SHA-256 Document Hash</span>
+                <span className="detail-code-text mono-font">{selectedApp.documentHash}</span>
+              </div>
+
+              <div className="detail-data-block">
+                <span className="detail-label">Document Registry Status</span>
+                <span className="detail-main-text">
+                  {selectedApp.documentVerified ? "Verified" : "Not verified"}
+                </span>
               </div>
 
               {/* Workflow Stepper */}

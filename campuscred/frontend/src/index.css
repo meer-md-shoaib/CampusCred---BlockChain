@@ -1774,3 +1774,74 @@ form input[type="submit"] {
   background: rgba(0, 255, 157, 0.08);
   color: #9dffd5;
 }
+
+/* CampusCred 2.0 — IPFS Encrypted Storage */
+.ipfs-result {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid rgba(0, 255, 225, 0.35);
+  border-radius: 12px;
+  background: rgba(0, 255, 225, 0.05);
+}
+
+.ipfs-label {
+  margin: 0 0 10px;
+  color: #00ffe1;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.ipfs-details p {
+  margin: 5px 0;
+  color: #b7c9d8;
+  font-size: 13px;
+}
+
+.ipfs-cid {
+  color: #ffffff;
+  font-family: monospace;
+  font-size: 13px;
+  word-break: break-all;
+  line-height: 1.6;
+}
+
+.ipfs-details a {
+  color: #00ffe1;
+  text-decoration: none;
+  border-bottom: 1px solid rgba(0, 255, 225, 0.4);
+}
+
+.ipfs-details a:hover {
+  color: #ffffff;
+}
+
+/* CampusCred 2.0 — Blockchain Document Proof */
+.blockchain-result {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid rgba(0, 255, 157, 0.4);
+  border-radius: 12px;
+  background: rgba(0, 255, 157, 0.05);
+}
+
+.blockchain-label {
+  margin: 0 0 10px;
+  color: #00ff9d;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.blockchain-details p {
+  margin: 5px 0;
+  color: #b7c9d8;
+  font-size: 13px;
+}
+
+.blockchain-hash,
+.blockchain-cid {
+  color: #ffffff;
+  font-family: monospace;
+  font-size: 13px;
+  word-break: break-all;
+  line-height: 1.6;
+}

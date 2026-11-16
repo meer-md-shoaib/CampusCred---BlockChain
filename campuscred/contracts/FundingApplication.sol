@@ -3,6 +3,7 @@ pragma solidity ^0.8.24;
 
 import "./CampusToken.sol";
 import "./StudentRegistry.sol";
+import "./DocumentRegistry.sol";
 
 contract FundingApplication {
     enum Status {
@@ -20,6 +21,8 @@ contract FundingApplication {
         string title;
         string reason;
         string documentCid;
+        bytes32 documentHash;
+        bool documentVerified;
         uint256 amount;
         Status status;
         uint256 approvalCount;
@@ -28,6 +31,7 @@ contract FundingApplication {
 
     CampusToken public token;
     StudentRegistry public registry;
+    DocumentRegistry public documentRegistry;
 
     address public admin;
     address[] public reviewers;
@@ -44,6 +48,7 @@ contract FundingApplication {
         address indexed student,
         string title,
         uint256 amount,
+        bytes32 documentHash,
         string documentCid
     );
 
@@ -76,9 +81,14 @@ contract FundingApplication {
         _;
     }
 
-    constructor(address _token, address _registry) {
+    constructor(
+        address _token,
+        address _registry,
+        address _documentRegistry
+    ) {
         token = CampusToken(_token);
         registry = StudentRegistry(_registry);
+        documentRegistry = DocumentRegistry(_documentRegistry);
         admin = msg.sender;
 
         reviewers.push(msg.sender);
@@ -105,6 +115,7 @@ contract FundingApplication {
         string memory _title,
         string memory _reason,
         string memory _documentCid,
+        bytes32 _documentHash,
         uint256 _amount
     ) external {
         require(
@@ -124,6 +135,8 @@ contract FundingApplication {
             title: _title,
             reason: _reason,
             documentCid: _documentCid,
+            documentHash: _documentHash,
+            documentVerified: false,
             amount: _amount,
             status: Status.Submitted,
             approvalCount: 0,
@@ -137,6 +150,7 @@ contract FundingApplication {
             msg.sender,
             _title,
             _amount,
+            _documentHash,
             _documentCid
         );
     }
@@ -256,6 +270,8 @@ contract FundingApplication {
             string memory title,
             string memory reason,
             string memory documentCid,
+            bytes32 documentHash,
+            bool documentVerified,
             uint256 amount,
             uint8 status,
             uint256 approvalCount
@@ -271,6 +287,8 @@ contract FundingApplication {
             application.title,
             application.reason,
             application.documentCid,
+            application.documentHash,
+            application.documentVerified,
             application.amount,
             uint8(application.status),
             application.approvalCount
