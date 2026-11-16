@@ -5,41 +5,69 @@ import {
   fundingApplicationAbi,
   studentRegistryAbi,
 } from "./contracts";
+import DocumentUpload from "./DocumentUpload";
 
-export default function ApplyForFunding({ signer, provider, address, onApplicationSubmitted }) {
+export default function ApplyForFunding({
+  signer,
+  provider,
+  address,
+  documentRegistryContract,
+  onConnectMetaMask,
+  onApplicationSubmitted,
+}) {
   const [title, setTitle] = useState("");
   const [reason, setReason] = useState("");
-  const [documentCid, setDocumentCid] = useState("QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco");
+  const [documentCid, setDocumentCid] = useState("");
+  const [documentHash, setDocumentHash] = useState("");
   const [amount, setAmount] = useState("300");
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState("");
   const [messageType, setMessageType] = useState("info");
   const [isRegistered, setIsRegistered] = useState(false);
+  const [documentRegistered, setDocumentRegistered] = useState(false);
+  const activeDocumentRegistry = documentRegistryContract
+    ? documentRegistryContract.connect(signer || provider)
+    : null;
 
-  useEffect(() => {
-    if (address && provider) {
-      checkRegistration();
-    }
-  }, [address, provider]);
-
-  async function checkRegistration() {
-    try {
-      const activeProvider = provider || new BrowserProvider(window.ethereum);
-      const registry = new Contract(
-        CONTRACT_ADDRESSES.studentRegistry,
-        studentRegistryAbi,
-        activeProvider
-      );
-      const reg = await registry.isStudentRegistered(address);
-      setIsRegistered(reg);
-    } catch (err) {
-      console.error(err);
-    }
+  function handleDocumentReady(document) {
+    setDocumentCid(document?.cid || "");
+    setDocumentHash(document?.documentHash || "");
+    setDocumentRegistered(Boolean(document?.registered));
   }
 
+  useEffect(() => {
+    if (!address || !provider) return undefined;
+
+    let active = true;
+    const registry = new Contract(
+      CONTRACT_ADDRESSES.studentRegistry,
+      studentRegistryAbi,
+      provider
+    );
+    registry
+      .isStudentRegistered(address)
+      .then((registered) => {
+        if (active) setIsRegistered(registered);
+      })
+      .catch((err) => {
+        console.error(err);
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [address, provider]);
+
   async function submitApplication() {
-    if (!title.trim() || !reason.trim() || !documentCid.trim() || !amount) {
-      setMessage("Please fill in every required field.");
+    if (
+      !title.trim() ||
+      !reason.trim() ||
+      !documentCid.trim() ||
+      !documentHash ||
+      !documentRegistered ||
+      !amount
+    ) {
+      setMessage("Complete and register the supporting document before submitting.");
       setMessageType("error");
       return;
     }
@@ -70,10 +98,34 @@ export default function ApplyForFunding({ signer, provider, address, onApplicati
       // Fix decimals: Convert CRED amount to 18 decimal wei
       const parsedAmount = parseUnits(amount.toString(), 18);
 
+      if (!activeDocumentRegistry) {
+        throw new Error("Document Registry contract is not connected.");
+      }
+
+      const documentExists =
+        await activeDocumentRegistry.verifyDocument(documentHash);
+      if (!documentExists) {
+        throw new Error("Register the supporting document on-chain first.");
+      }
+
+      const [, registeredCid, documentOwner] =
+        await activeDocumentRegistry.getDocument(documentHash);
+      const signerAddress = await activeSigner.getAddress();
+      if (
+        registeredCid !== documentCid.trim() ||
+        documentOwner.toLowerCase() !== signerAddress.toLowerCase()
+      ) {
+        throw new Error(
+          "The registered document CID or owner does not match this application."
+        );
+      }
+
+      setMessage("Submitting funding application to the blockchain...");
       const tx = await fundingContract.submitApplication(
         title.trim(),
         reason.trim(),
         documentCid.trim(),
+        documentHash,
         parsedAmount
       );
 
@@ -137,34 +189,38 @@ export default function ApplyForFunding({ signer, provider, address, onApplicati
           />
         </div>
 
-        <div className="form-row-2">
-          <div className="form-group">
-            <label>Requested Amount (CRED Tokens)</label>
-            <div className="input-with-affix">
-              <input
-                className="cyber-input"
-                type="number"
-                min="1"
-                placeholder="Amount"
-                value={amount}
-                onChange={(e) => setAmount(e.target.value)}
-                disabled={loading}
-              />
-              <span className="input-affix">CRED</span>
-            </div>
-            <span className="helper-text">Disbursed with full 18-decimal token precision</span>
-          </div>
-
-          <div className="form-group">
-            <label>Supporting Document IPFS CID</label>
+        <div className="form-group">
+          <label>Requested Amount (CRED Tokens)</label>
+          <div className="input-with-affix">
             <input
-              className="cyber-input mono-font"
-              type="text"
-              placeholder="e.g. QmXoypizjW3WknFiJnKLw..."
-              value={documentCid}
-              onChange={(e) => setDocumentCid(e.target.value)}
+              className="cyber-input"
+              type="number"
+              min="1"
+              placeholder="Amount"
+              value={amount}
+              onChange={(e) => setAmount(e.target.value)}
               disabled={loading}
             />
+            <span className="input-affix">CRED</span>
+          </div>
+          <span className="helper-text">Disbursed with full 18-decimal token precision</span>
+        </div>
+
+        <div className="form-group">
+          <label htmlFor="document-cid">Supporting Document IPFS CID</label>
+          <input
+            id="document-cid"
+            className="cyber-input mono-font"
+            type="text"
+            placeholder="Enter an IPFS CID or upload a document below"
+            value={documentCid}
+            onChange={(event) => {
+              setDocumentCid(event.target.value);
+              setDocumentRegistered(false);
+            }}
+            disabled={loading}
+          />
+          {documentCid && (
             <span className="helper-text">
               <a
                 href={`https://ipfs.io/ipfs/${documentCid}`}
@@ -175,8 +231,14 @@ export default function ApplyForFunding({ signer, provider, address, onApplicati
                 Inspect IPFS Gateway Preview ↗
               </a>
             </span>
-          </div>
+          )}
         </div>
+
+        <DocumentUpload
+          onDocumentReady={handleDocumentReady}
+          documentRegistryContract={documentRegistryContract}
+          onConnectMetaMask={onConnectMetaMask}
+        />
 
         <button
           className="primary-button large"

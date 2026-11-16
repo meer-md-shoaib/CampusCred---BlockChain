@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "ethers": "^6.17.0",
+    "pinata": "^2.5.8",
     "react": "^19.2.8",
     "react-dom": "^19.2.8"
   },

@@ -1,9 +1,8 @@
-import { Contract } from "ethers";
-
 export const CONTRACT_ADDRESSES = {
-  campusToken: "0x5FbDB2315678afecb367f032d93F642f64180aa3",
-  studentRegistry: "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512",
-  fundingApplication: "0x9fE46736679d2D9a65F0992F2272dE9f3c7fa6e0",
+  campusToken: "0x4c5859f0F772848b2D91F1D83E2Fe57935348029",
+  studentRegistry: "0x1291Be112d480055DaFd8a610b7d1e203891C274",
+  documentRegistry: "0x5f3f1dBD7B74C6B46e8c44f98792A1dAf8d69154",
+  fundingApplication: "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575",
 };
 
 export const DEMO_PROFILES = [
@@ -77,14 +76,22 @@ export const fundingApplicationAbi = [
   "function requiredApprovals() view returns (uint256)",
   "function addReviewer(address reviewer)",
   "function removeReviewer(address reviewer)",
-  "function submitApplication(string title, string reason, string documentCid, uint256 amount)",
-  "function approveApplication(uint256 applicationId)",
+  "function submitApplication(string title, string reason, string documentCid, bytes32 documentHash, uint256 amount)",
+  "function approveApplication(uint256 applicationId, bytes signature)",
   "function rejectApplication(uint256 applicationId)",
   "function disburseFunds(uint256 applicationId)",
   "function completeApplication(uint256 applicationId)",
-  "function getApplicationDetails(uint256 applicationId) view returns (uint256 id, address student, string title, string reason, string documentCid, uint256 amount, uint8 status, uint256 approvalCount)",
-  "function getAllApplications() view returns (tuple(uint256 id, address student, string title, string reason, string documentCid, uint256 amount, uint8 status, uint256 approvalCount, bool exists)[])",
+  "function getApplicationDetails(uint256 applicationId) view returns (uint256 id, address student, string title, string reason, string documentCid, bytes32 documentHash, bool documentVerified, uint256 amount, uint8 status, uint256 approvalCount)",
+  "function getAllApplications() view returns (tuple(uint256 id, address student, string title, string reason, string documentCid, bytes32 documentHash, bool documentVerified, uint256 amount, uint8 status, uint256 approvalCount, bool exists)[])",
   "function hasApproved(uint256 applicationId, address reviewer) view returns (bool)",
+  "function verifyReviewerSignature(uint256 applicationId, bytes32 documentHash, address reviewer, bytes signature) pure returns (bool)",
+];
+
+export const documentRegistryAbi = [
+  "function registerDocument(bytes32 documentHash, string ipfsCid)",
+  "function verifyDocument(bytes32 documentHash) view returns (bool)",
+  "function getDocument(bytes32 documentHash) view returns (bytes32 documentHash, string ipfsCid, address owner, uint256 uploadedAt, bool exists)",
+  "function getOwnerDocuments(address owner) view returns (bytes32[])",
 ];
 
 export const campusTokenAbi = [

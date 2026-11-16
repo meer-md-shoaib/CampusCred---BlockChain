@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BrowserProvider, Contract, formatUnits } from "ethers";
+import { BrowserProvider, Contract, ethers, formatUnits } from "ethers";
 import {
   CONTRACT_ADDRESSES,
   fundingApplicationAbi,
@@ -46,7 +46,7 @@ export default function ReviewerPanel({ signer, provider, address, onReviewActio
         let userApproved = false;
         try {
           userApproved = await fundingContract.hasApproved(id, address);
-        } catch (e) {
+        } catch {
           userApproved = false;
         }
         approvedMap[id] = userApproved;
@@ -57,6 +57,8 @@ export default function ReviewerPanel({ signer, provider, address, onReviewActio
           title: app.title,
           reason: app.reason,
           documentCid: app.documentCid,
+          documentHash: app.documentHash,
+          documentVerified: app.documentVerified,
           amount: formatUnits(app.amount, 18),
           status: Number(app.status),
           approvalCount: Number(app.approvalCount),
@@ -74,6 +76,25 @@ export default function ReviewerPanel({ signer, provider, address, onReviewActio
     }
   }
 
+  async function signApprovalMessage(
+    approvalSigner,
+    applicationId,
+    documentHash,
+    reviewer
+  ) {
+    const messageHash = ethers.solidityPackedKeccak256(
+      ["string", "uint256", "bytes32", "address"],
+      [
+        "CampusCred Approval",
+        applicationId,
+        documentHash,
+        reviewer,
+      ]
+    );
+
+    return approvalSigner.signMessage(ethers.getBytes(messageHash));
+  }
+
   async function handleApprove(appId) {
     try {
       setActionLoading(`approve-${appId}`);
@@ -86,13 +107,67 @@ export default function ReviewerPanel({ signer, provider, address, onReviewActio
         activeSigner = await prov.getSigner();
       }
 
+      if (!activeSigner) {
+        throw new Error("Connect an authorized reviewer wallet to approve.");
+      }
+
+      const activeProvider = activeSigner.provider || provider;
+      const network = await activeProvider.getNetwork();
+      if (network.chainId !== 31337n) {
+        throw new Error(
+          "Wrong blockchain network. Switch MetaMask to the local Hardhat network (chain ID 31337)."
+        );
+      }
+
+      const reviewerAddress = await activeSigner.getAddress();
       const fundingContract = new Contract(
         CONTRACT_ADDRESSES.fundingApplication,
         fundingApplicationAbi,
         activeSigner
       );
 
-      const tx = await fundingContract.approveApplication(appId);
+      if (!(await fundingContract.isReviewer(reviewerAddress))) {
+        throw new Error(
+          "The connected wallet is not authorized as a reviewer on this deployment."
+        );
+      }
+
+      const application = (await fundingContract.getAllApplications()).find(
+        (item) => Number(item.id) === appId
+      );
+
+      if (!application?.exists) {
+        throw new Error(
+          "Application not found on this deployment. Refresh the reviewer feed."
+        );
+      }
+
+      if (
+        application.student.toLowerCase() === reviewerAddress.toLowerCase()
+      ) {
+        throw new Error("A reviewer cannot approve their own application.");
+      }
+
+      if (![0, 1].includes(Number(application.status))) {
+        throw new Error("This application is no longer open for review.");
+      }
+
+      if (await fundingContract.hasApproved(appId, reviewerAddress)) {
+        throw new Error("This reviewer has already approved this application.");
+      }
+
+      if (!application.documentVerified) {
+        throw new Error("This application does not have a verified document.");
+      }
+
+      const signature = await signApprovalMessage(
+        activeSigner,
+        appId,
+        application.documentHash,
+        reviewerAddress
+      );
+      await fundingContract.approveApplication.staticCall(appId, signature);
+      const tx = await fundingContract.approveApplication(appId, signature);
       await tx.wait();
 
       setMessage(`Application #${appId} successfully approved!`);
@@ -100,7 +175,13 @@ export default function ReviewerPanel({ signer, provider, address, onReviewActio
       await loadReviewerData();
       if (onReviewAction) onReviewAction();
     } catch (error) {
-      setMessage(error.reason || error.shortMessage || error.message || "Approval transaction failed");
+      setMessage(
+        error.reason ||
+          error.shortMessage ||
+          error.info?.error?.message ||
+          error.message ||
+          "Approval transaction failed."
+      );
       setMessageType("error");
     } finally {
       setActionLoading(null);

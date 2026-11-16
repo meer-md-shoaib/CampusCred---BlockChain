@@ -58,6 +58,8 @@ export default function ApplicationTracker({ provider, address }) {
           title: app.title,
           reason: app.reason,
           documentCid: app.documentCid,
+          documentHash: app.documentHash,
+          documentVerified: app.documentVerified,
           amount: formatUnits(app.amount, 18),
           status: Number(app.status),
           approvalCount: Number(app.approvalCount),
@@ -195,6 +197,30 @@ export default function ApplicationTracker({ provider, address }) {
                     View on IPFS ↗
                   </a>
                 </div>
+              </div>
+
+              <div
+                className={`security-status ${
+                  selectedApp.documentVerified ? "verified" : "unverified"
+                }`}
+              >
+                <p>
+                  <strong>Document Verified:</strong>{" "}
+                  {selectedApp.documentVerified ? "Yes" : "No"}
+                </p>
+                <p>
+                  <strong>Document Hash:</strong>{" "}
+                  <span className="mono-font">{selectedApp.documentHash}</span>
+                </p>
+                <p>
+                  <strong>Approvals:</strong> {selectedApp.approvalCount} / 2
+                </p>
+                <p>
+                  <strong>Security Status:</strong>{" "}
+                  {selectedApp.documentVerified
+                    ? "Document verified and approval workflow active"
+                    : "Document not verified"}
+                </p>
               </div>
 
               {/* Workflow Stepper */}
