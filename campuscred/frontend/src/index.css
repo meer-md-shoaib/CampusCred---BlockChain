@@ -1619,3 +1619,158 @@ form input[type="submit"] {
   color: var(--muted);
   font-size: 14px;
 }
+
+.document-upload {
+  margin: 25px 0;
+  padding: 20px;
+  border: 1px solid rgba(0, 255, 225, 0.22);
+  border-radius: 14px;
+  background: rgba(6, 10, 22, 0.55);
+}
+
+.document-upload h3 {
+  margin: 0 0 8px;
+  color: #00ffe1;
+  font-size: 17px;
+}
+
+.document-upload p {
+  margin: 0 0 18px;
+  color: #8ea3b8;
+  font-size: 13px;
+  line-height: 1.6;
+}
+
+.file-label {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  padding: 13px 20px;
+  border: 1px dashed rgba(0, 255, 225, 0.45);
+  border-radius: 10px;
+  color: #00ffe1;
+  background: rgba(0, 255, 225, 0.05);
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.file-label:hover {
+  border-color: #00ffe1;
+  background: rgba(0, 255, 225, 0.12);
+  box-shadow: 0 0 18px rgba(0, 255, 225, 0.15);
+}
+
+.file-icon {
+  font-size: 20px;
+}
+
+.file-text {
+  font-size: 14px;
+  font-weight: 700;
+}
+
+#document-input {
+  display: none;
+}
+
+.document-details {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid rgba(0, 255, 157, 0.25);
+  border-radius: 12px;
+  background: rgba(0, 255, 157, 0.05);
+}
+
+.detail-row {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 10px;
+  color: #8ea3b8;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.detail-row strong {
+  color: #e6f7ff;
+}
+
+.hash-value {
+  color: #00ffe1 !important;
+  font-family: monospace;
+  font-size: 12px;
+}
+
+.success-text {
+  color: #00ff9d !important;
+}
+
+.status-message {
+  margin-top: 14px;
+  padding: 11px 14px;
+  border-radius: 10px;
+  font-size: 13px;
+}
+
+.status-message.info {
+  border: 1px solid rgba(0, 255, 225, 0.35);
+  background: rgba(0, 255, 225, 0.07);
+  color: #9ff8ef;
+}
+
+.status-message.error {
+  border: 1px solid rgba(255, 77, 109, 0.45);
+  background: rgba(255, 77, 109, 0.08);
+  color: #ffb3c1;
+}
+
+/* CampusCred 2.0 — AES-256-GCM Encryption */
+.encryption-result {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid rgba(177, 75, 255, 0.4);
+  border-radius: 12px;
+  background: rgba(177, 75, 255, 0.06);
+}
+
+.encryption-label {
+  margin: 0 0 10px;
+  color: #b14bff;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.encryption-details p {
+  margin: 5px 0;
+  color: #b7c9d8;
+  font-size: 13px;
+}
+
+.decrypt-button {
+  margin-top: 14px;
+  padding: 11px 18px;
+  border: 1px solid #b14bff;
+  border-radius: 8px;
+  color: #ffffff;
+  background: rgba(177, 75, 255, 0.18);
+  font-weight: 700;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.decrypt-button:hover:not(:disabled) {
+  border-color: #00ffe1;
+  color: #00ffe1;
+  background: rgba(0, 255, 225, 0.1);
+}
+
+.decrypt-button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.status-message.success {
+  margin-top: 12px;
+  border: 1px solid rgba(0, 255, 157, 0.45);
+  background: rgba(0, 255, 157, 0.08);
+  color: #9dffd5;
+}

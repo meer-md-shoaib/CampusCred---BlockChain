@@ -5,6 +5,7 @@ import {
   fundingApplicationAbi,
   studentRegistryAbi,
 } from "./contracts";
+import DocumentUpload from "./DocumentUpload";
 
 export default function ApplyForFunding({ signer, provider, address, onApplicationSubmitted }) {
   const [title, setTitle] = useState("");
@@ -177,6 +178,8 @@ export default function ApplyForFunding({ signer, provider, address, onApplicati
             </span>
           </div>
         </div>
+
+        <DocumentUpload />
 
         <button
           className="primary-button large"
