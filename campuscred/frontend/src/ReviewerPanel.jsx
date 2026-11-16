@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { BrowserProvider, Contract, formatUnits } from "ethers";
+import { BrowserProvider, Contract, ethers, formatUnits } from "ethers";
 import {
   CONTRACT_ADDRESSES,
   fundingApplicationAbi,
@@ -57,6 +57,8 @@ export default function ReviewerPanel({ signer, provider, address, onReviewActio
           title: app.title,
           reason: app.reason,
           documentCid: app.documentCid,
+          documentHash: app.documentHash,
+          documentVerified: app.documentVerified,
           amount: formatUnits(app.amount, 18),
           status: Number(app.status),
           approvalCount: Number(app.approvalCount),
@@ -72,6 +74,25 @@ export default function ReviewerPanel({ signer, provider, address, onReviewActio
     } finally {
       setLoading(false);
     }
+  }
+
+  async function signApprovalMessage(
+    approvalSigner,
+    applicationId,
+    documentHash,
+    reviewer
+  ) {
+    const messageHash = ethers.solidityPackedKeccak256(
+      ["string", "uint256", "bytes32", "address"],
+      [
+        "CampusCred Approval",
+        applicationId,
+        documentHash,
+        reviewer,
+      ]
+    );
+
+    return approvalSigner.signMessage(ethers.getBytes(messageHash));
   }
 
   async function handleApprove(appId) {
@@ -135,8 +156,18 @@ export default function ReviewerPanel({ signer, provider, address, onReviewActio
         throw new Error("This reviewer has already approved this application.");
       }
 
-      await fundingContract.approveApplication.staticCall(appId);
-      const tx = await fundingContract.approveApplication(appId);
+      if (!application.documentVerified) {
+        throw new Error("This application does not have a verified document.");
+      }
+
+      const signature = await signApprovalMessage(
+        activeSigner,
+        appId,
+        application.documentHash,
+        reviewerAddress
+      );
+      await fundingContract.approveApplication.staticCall(appId, signature);
+      const tx = await fundingContract.approveApplication(appId, signature);
       await tx.wait();
 
       setMessage(`Application #${appId} successfully approved!`);

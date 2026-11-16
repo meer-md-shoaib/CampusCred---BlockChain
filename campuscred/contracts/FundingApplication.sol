@@ -4,6 +4,7 @@ pragma solidity ^0.8.24;
 import "./CampusToken.sol";
 import "./StudentRegistry.sol";
 import "./DocumentRegistry.sol";
+import "@openzeppelin/contracts/utils/cryptography/ECDSA.sol";
 
 contract FundingApplication {
     enum Status {
@@ -41,6 +42,7 @@ contract FundingApplication {
 
     mapping(uint256 => Application) public applications;
     mapping(uint256 => mapping(address => bool)) public hasApproved;
+    mapping(uint256 => mapping(address => bytes)) public approvalSignatures;
     mapping(address => bool) public isReviewer;
 
     event ApplicationSubmitted(
@@ -136,7 +138,7 @@ contract FundingApplication {
             reason: _reason,
             documentCid: _documentCid,
             documentHash: _documentHash,
-            documentVerified: false,
+            documentVerified: documentRegistry.verifyDocument(_documentHash),
             amount: _amount,
             status: Status.Submitted,
             approvalCount: 0,
@@ -155,8 +157,30 @@ contract FundingApplication {
         );
     }
 
+    function verifyReviewerSignature(
+        uint256 _applicationId,
+        bytes32 _documentHash,
+        address _reviewer,
+        bytes memory _signature
+    ) public pure returns (bool) {
+        bytes32 messageHash = keccak256(
+            abi.encodePacked(
+                "CampusCred Approval",
+                _applicationId,
+                _documentHash,
+                _reviewer
+            )
+        );
+        bytes32 ethSignedMessageHash = keccak256(
+            abi.encodePacked("\x19Ethereum Signed Message:\n32", messageHash)
+        );
+
+        return ECDSA.recover(ethSignedMessageHash, _signature) == _reviewer;
+    }
+
     function approveApplication(
-        uint256 _applicationId
+        uint256 _applicationId,
+        bytes memory _signature
     ) external onlyReviewer {
         Application storage application = applications[_applicationId];
 
@@ -173,8 +197,19 @@ contract FundingApplication {
             !hasApproved[_applicationId][msg.sender],
             "Already approved"
         );
+        require(application.documentVerified, "Document is not verified");
+        require(
+            verifyReviewerSignature(
+                _applicationId,
+                application.documentHash,
+                msg.sender,
+                _signature
+            ),
+            "Invalid reviewer signature"
+        );
 
         hasApproved[_applicationId][msg.sender] = true;
+        approvalSignatures[_applicationId][msg.sender] = _signature;
         application.approvalCount++;
 
         if (application.status == Status.Submitted) {
@@ -216,16 +251,23 @@ contract FundingApplication {
         Application storage application = applications[_applicationId];
 
         require(application.exists, "Application not found");
-        require(application.status == Status.Approved, "Not approved");
-
-        application.status = Status.Disbursed;
+        require(
+            application.status == Status.Approved,
+            "Application is not approved"
+        );
+        require(application.approvalCount >= 2, "Insufficient approvals");
+        require(
+            application.documentVerified,
+            "Document is not verified"
+        );
 
         bool transferred = token.transfer(
             application.student,
             application.amount
         );
 
-        require(transferred, "Token transfer failed");
+        require(transferred, "CRED transfer failed");
+        application.status = Status.Disbursed;
 
         emit FundsDisbursed(
             _applicationId,

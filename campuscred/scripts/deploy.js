@@ -60,7 +60,7 @@ async function main() {
 
   console.log("Submitting sample funding request (500 CRED)...");
   const sampleDocumentCid = "QmXoypizjW3WknFiJnKLwHCnL72vedxjQkDDP1mXWo6uco";
-  const sampleDocumentHash = ethers.sha256(
+  const sampleDocumentHash = ethers.keccak256(
     ethers.toUtf8Bytes("CampusCred sample document")
   );
   const documentTx = await documentRegistry.connect(student).registerDocument(

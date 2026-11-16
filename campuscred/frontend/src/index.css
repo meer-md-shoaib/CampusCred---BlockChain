@@ -1858,3 +1858,156 @@ form input[type="submit"] {
   opacity: 0.6;
   cursor: not-allowed;
 }
+
+/* CampusCred 2.0 — Security Status */
+.security-status {
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  border: 1px solid rgba(0, 255, 157, 0.35);
+  background: rgba(0, 255, 157, 0.05);
+}
+
+.security-status.verified {
+  border-color: rgba(0, 255, 157, 0.5);
+  color: #9dffd5;
+}
+
+.security-status.unverified {
+  border-color: rgba(255, 77, 109, 0.4);
+  background: rgba(255, 77, 109, 0.06);
+  color: #ffb3c1;
+}
+
+/* CampusCred 2.0 — Security Audit Trail */
+.security-audit {
+  margin-top: 25px;
+  padding: 20px;
+  border: 1px solid rgba(177, 75, 255, 0.35);
+  border-radius: 16px;
+  background: rgba(12, 8, 28, 0.75);
+  box-shadow: 0 0 25px rgba(177, 75, 255, 0.08);
+}
+
+.security-audit h2 {
+  margin: 0 0 10px;
+  color: #b14bff;
+  font-size: 20px;
+}
+
+.security-audit > p {
+  margin: 0 0 18px;
+  color: #8ea3b8;
+  font-size: 14px;
+  line-height: 1.6;
+}
+
+.audit-input {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.audit-input input {
+  flex: 1;
+  padding: 12px;
+  border: 1px solid rgba(142, 163, 184, 0.3);
+  border-radius: 8px;
+  color: #e6f7ff;
+  background: rgba(4, 7, 17, 0.7);
+}
+
+.audit-input button {
+  padding: 12px 18px;
+  border: 1px solid #b14bff;
+  border-radius: 8px;
+  color: #ffffff;
+  background: rgba(177, 75, 255, 0.18);
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.audit-input button:hover:not(:disabled) {
+  border-color: #00ffe1;
+  color: #00ffe1;
+}
+
+.audit-input button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.audit-result {
+  padding: 16px;
+  border: 1px solid rgba(0, 255, 225, 0.3);
+  border-radius: 12px;
+  background: rgba(0, 255, 225, 0.04);
+}
+
+.audit-label {
+  margin: 0 0 14px;
+  color: #00ffe1;
+  font-size: 12px;
+  letter-spacing: 1px;
+}
+
+.audit-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+}
+
+.audit-item {
+  padding: 12px;
+  border: 1px solid rgba(142, 163, 184, 0.2);
+  border-radius: 10px;
+  background: rgba(255, 255, 255, 0.03);
+}
+
+.audit-item span {
+  display: block;
+  margin-bottom: 5px;
+  color: #8ea3b8;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+.audit-item strong {
+  color: #ffffff;
+  font-size: 13px;
+  word-break: break-all;
+}
+
+.audit-hash {
+  margin-top: 14px;
+  padding: 12px;
+  border: 1px solid rgba(0, 255, 225, 0.25);
+  border-radius: 10px;
+  background: rgba(0, 255, 225, 0.04);
+}
+
+.audit-hash span {
+  display: block;
+  margin-bottom: 6px;
+  color: #00ffe1;
+  font-size: 11px;
+  letter-spacing: 0.5px;
+}
+
+.audit-hash p {
+  margin: 0;
+  color: #ffffff;
+  font-family: monospace;
+  font-size: 12px;
+  word-break: break-all;
+}
+
+@media (max-width: 620px) {
+  .audit-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .audit-input {
+    flex-direction: column;
+  }
+}

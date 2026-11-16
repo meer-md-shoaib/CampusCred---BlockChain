@@ -1,8 +1,8 @@
 export const CONTRACT_ADDRESSES = {
-  campusToken: "0xa85233C63b9Ee964Add6F2cffe00Fd84eb32338f",
-  studentRegistry: "0x4A679253410272dd5232B3Ff7cF5dbB88f295319",
-  documentRegistry: "0x7a2088a1bFc9d81c55368AE168C2C02570cB814F",
-  fundingApplication: "0x09635F643e140090A9A8Dcd712eD6285858ceBef",
+  campusToken: "0x4c5859f0F772848b2D91F1D83E2Fe57935348029",
+  studentRegistry: "0x1291Be112d480055DaFd8a610b7d1e203891C274",
+  documentRegistry: "0x5f3f1dBD7B74C6B46e8c44f98792A1dAf8d69154",
+  fundingApplication: "0xb7278A61aa25c888815aFC32Ad3cC52fF24fE575",
 };
 
 export const DEMO_PROFILES = [
@@ -77,13 +77,14 @@ export const fundingApplicationAbi = [
   "function addReviewer(address reviewer)",
   "function removeReviewer(address reviewer)",
   "function submitApplication(string title, string reason, string documentCid, bytes32 documentHash, uint256 amount)",
-  "function approveApplication(uint256 applicationId)",
+  "function approveApplication(uint256 applicationId, bytes signature)",
   "function rejectApplication(uint256 applicationId)",
   "function disburseFunds(uint256 applicationId)",
   "function completeApplication(uint256 applicationId)",
   "function getApplicationDetails(uint256 applicationId) view returns (uint256 id, address student, string title, string reason, string documentCid, bytes32 documentHash, bool documentVerified, uint256 amount, uint8 status, uint256 approvalCount)",
   "function getAllApplications() view returns (tuple(uint256 id, address student, string title, string reason, string documentCid, bytes32 documentHash, bool documentVerified, uint256 amount, uint8 status, uint256 approvalCount, bool exists)[])",
   "function hasApproved(uint256 applicationId, address reviewer) view returns (bool)",
+  "function verifyReviewerSignature(uint256 applicationId, bytes32 documentHash, address reviewer, bytes signature) pure returns (bool)",
 ];
 
 export const documentRegistryAbi = [

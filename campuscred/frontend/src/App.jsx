@@ -14,6 +14,7 @@ import ApplyForFunding from "./ApplyForFunding";
 import AdminPanel from "./AdminPanel";
 import ReviewerPanel from "./ReviewerPanel";
 import ApplicationTracker from "./ApplicationTracker";
+import SecurityAuditPanel from "./SecurityAuditPanel";
 
 const TABS = [
   { id: "student", label: "Student Profile", icon: "🎓" },
@@ -47,6 +48,28 @@ function App() {
           )
         : null,
     [walletInfo?.signer]
+  );
+  const auditDocumentRegistryContract = useMemo(
+    () =>
+      walletInfo?.provider
+        ? new Contract(
+            CONTRACT_ADDRESSES.documentRegistry,
+            documentRegistryAbi,
+            walletInfo.provider
+          )
+        : null,
+    [walletInfo?.provider]
+  );
+  const auditFundingContract = useMemo(
+    () =>
+      walletInfo?.provider
+        ? new Contract(
+            CONTRACT_ADDRESSES.fundingApplication,
+            fundingApplicationAbi,
+            walletInfo.provider
+          )
+        : null,
+    [walletInfo?.provider]
   );
 
   // Connect on load to default profile (Admin) for instant experience if no metamask
@@ -283,10 +306,16 @@ function App() {
         )}
 
         {activeTab === "track" && (
-          <ApplicationTracker
-            provider={walletInfo?.provider}
-            address={currentAddress}
-          />
+          <>
+            <ApplicationTracker
+              provider={walletInfo?.provider}
+              address={currentAddress}
+            />
+            <SecurityAuditPanel
+              documentRegistryContract={auditDocumentRegistryContract}
+              fundingContract={auditFundingContract}
+            />
+          </>
         )}
 
         {/* Dedicated Persona & Private Keys Tab */}
